@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>유니버셜 조인트 각속도비 애니메이션</title>
+
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <link rel="stylesheet" href="joint.css" />
+  <style>
+    :root { --fg:#111; --bg:#fff; --muted:#666; --line:#e6e6e6; --result-h: 4.2em; }
+    body { margin:0; color:var(--fg); background:var(--bg);
+           font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", Arial, sans-serif; line-height:1.45; }
+    .wrap { max-width: 1200px; margin: 18px auto; padding: 0 14px; }
+    .deck { width: min(1160px, 96vw); aspect-ratio: 16 / 9; background:#fff; box-shadow: 0 4px 18px rgba(0,0,0,.06); padding: 16px 22px; border: 1px solid var(--line); border-radius: 10px; }
+    h1 { margin: 2px 0 12px; font-size: 1.4rem; font-weight: 750; text-align:center; color: #111; }
+    h2 { margin: 10px 0 6px; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.2px; color:#222; text-align:center; }
+    .top { margin: 4px 0 8px; }
+    .formula { font-size: clamp(1rem, 1.2vw + 0.9rem, 1.5rem); line-height: 1.3; padding: 4px 0; text-align: center; color: #111; }
+    .big { font-size: clamp(1.2rem, 1.8vw + 1.0rem, 1.9rem); }
+    .box { border:1px solid var(--line); border-radius:10px; padding: 10px 8px; background:#fafafa; color: #111; }
+    .sector .box.formula { height: var(--result-h); display: flex; align-items: center; justify-content: center; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch; }
+    .sector { border:1px solid var(--line); border-radius: 10px; padding: 10px 10px; background:#fff; display:flex; flex-direction:column; }
+    .muted { color: var(--muted); text-align:center; }
+    footer { color: var(--muted); font-size: .8rem; margin: 8px 0; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="left">
+      <canvas id="view3d" aria-label="3D universal joint"></canvas>
+
+      <div class="hud views" role="group" aria-label="표준 시야 버튼">
+        <button data-view="+X">+X</button>
+        <button data-view="-X">-X</button>
+        <button data-view="+Y">+Y</button>
+        <button data-view="-Y">-Y</button>
+        <button data-view="+Z">+Z</button>
+        <button data-view="-Z">-Z</button>
+        <button data-view="ISO">ISO</button>
+      </div>
+
+      <div class="hud controls" role="group" aria-label="애니메이션 제어">
+        <div class="eps-info" aria-live="polite">
+          εmax/εmin: <span id="epsRatio">1.000</span>
+        </div>
+        <label>
+          회전 속도 (deg/s)
+          <input id="speed" type="range" min="0" max="720" step="1" value="120" />
+          <span id="speedVal">120</span>
+        </label>
+        <label>
+          두 축 사이 각도 α (deg)
+          <input id="beta" type="range" min="0" max="30" step="0.5" value="20" />
+          <span id="betaVal">20</span>
+        </label>
+      </div>
+
+      <div class="hud readout" aria-live="polite">
+        <div>θ1: <span id="theta1">0.0</span>°</div>
+        <div>θ2: <span id="theta2">0.0</span>°</div>
+        <div>ω2/ω1: <span id="ratio">1.000</span></div>
+      </div>
+    </section>
+
+    <aside class="right">
+      <header>고정 투영: 상(구동축 원) · 하(종동축 원 + 구동축 투영 타원)</header>
+      <canvas id="proj" aria-label="투영/타원"></canvas>
+      <p class="caption"></p>
+    </aside>
+  </div>
+
+  <script src="joint.js"></script>
+
+  <main class="wrap deck">
+    <h1>유니버설 조인트 속도비 ε</h1>
+
+    <section>
+      <h2>기본 공식</h2>
+      <div class="box formula big">$$\varepsilon=\frac{\omega_2}{\omega_1}=\frac{\cos\alpha}{1-\sin^2\!\alpha\,\sin^2\!\theta_1}$$</div>
+      <div class="formula">$$D=1-\underbrace{\sin^2\!\alpha}_{\text{상수}}\,\sin^2\!\theta_1$$</div>
+    </section>
+
+    <div class="cols">
+      <section class="sector">
+        <h2>최대</h2>
+        <div class="formula">$$1-\sin^2\!\alpha\,\sin^2\!\theta_1\;\text{ 최소 }\;\Rightarrow\;\sin^2\!\theta_1\;\text{ 최대 }$$</div>
+        <div class="formula">$$\sin\theta_1=1\;\; (\theta_1=90^\circ,\,270^\circ)$$</div>
+        <div class="formula">$$\require{cancel}\; D=1-\sin^2\!\alpha\,\cancelto{1}{\sin^2\!\theta_1}=\cos^2\!\alpha$$</div>
+        <div class="box formula">$$\varepsilon_{\max}=\frac{\cos\alpha}{\cos^2\!\alpha}=\sec\alpha$$</div>
+      </section>
+
+      <section class="sector">
+        <h2>최소</h2>
+        <div class="formula">$$1-\sin^2\!\alpha\,\sin^2\!\theta_1\;\text{ 최대 }\;\Rightarrow\;\sin^2\!\theta_1\;\text{ 최소 }$$</div>
+        <div class="formula">$$\sin\theta_1=0\;\; (\theta_1=0^\circ,\,180^\circ)$$</div>
+        <div class="formula">$$\require{cancel}\; D=1-\sin^2\!\alpha\,\cancelto{0}{\sin^2\!\theta_1}=1$$</div>
+        <div class="box formula">$$\varepsilon_{\min}=\frac{\cos\alpha}{1}=\cos\alpha$$</div>
+      </section>
+    </div>
+
+    <section>
+      <h2>α = 9°</h2>
+      <div class="formula">$$\sec 9^\circ = 1.012465\qquad \cos 9^\circ = 0.987688$$</div>
+      <div class="formula">$$\varepsilon_{\max}=1.012465\qquad \varepsilon_{\min}=0.987688$$</div>
+
+    </section>
+
+  </main>
+</body>
+</html>
