@@ -453,6 +453,89 @@
     ctx2d.fillStyle = '#ffd166';
     ctx2d.beginPath(); ctx2d.arc(px, py, 5, 0, Math.PI*2); ctx2d.fill();
 
+    // ----- θ2: 타원 기준 각도 표기 -----
+    // 타원 상의 점을 얻는 헬퍼 (구동축 원의 매개변수 t를 사용)
+    function ellipsePoint(t){
+      const p3 = V.add(V.scale(b1x, Math.cos(t)*radius), V.scale(b1y, Math.sin(t)*radius));
+      const proj = V.sub(p3, V.scale(S2, V.dot(S2, p3)));
+      const xx = -V.dot(proj, u2r); // 화면계 치환(lead)
+      const yy = -V.dot(proj, v2r);
+      return {
+        x: botCenter.x + (xx/radius)*Rb,
+        y: botCenter.y + (yy/radius)*Rb
+      };
+    }
+
+    // 타원 최상단(12시) 기준 매개변수 t0 계산
+    // y(t) = dot(p3(t), v2r)가 최대인 t
+    const A = V.dot(b1x, v2r);
+    const B = V.dot(b1y, v2r);
+    const t0 = Math.atan2(B, A);
+    const pTopEll = ellipsePoint(t0);
+
+    // 기준선(점선): 중심 -> 타원의 12시 방향
+    ctx2d.save();
+    ctx2d.setLineDash([5,5]);
+    ctx2d.strokeStyle = 'rgba(160,170,190,0.95)';
+    ctx2d.lineWidth = 1.2;
+    ctx2d.beginPath();
+    ctx2d.moveTo(botCenter.x, botCenter.y);
+    ctx2d.lineTo(pTopEll.x, pTopEll.y);
+    ctx2d.stroke();
+    ctx2d.restore();
+
+    // 현재 위치까지의 반경선(실선)
+    ctx2d.save();
+    ctx2d.strokeStyle = '#ff6464';
+    ctx2d.lineWidth = 2;
+    ctx2d.beginPath();
+    ctx2d.moveTo(botCenter.x, botCenter.y);
+    ctx2d.lineTo(px, py);
+    ctx2d.stroke();
+    ctx2d.restore();
+
+    // 내부 타원 호(12시 -> 현재): 상단 원의 내부 원호와 동일한 비율의 ‘내부 타원’ 위에 그린다
+    let dParam = (theta1 - t0) % (Math.PI*2);
+    if (dParam < 0) dParam += Math.PI*2;
+    const kArc = Math.max(12, Rb * 0.45) / Rb; // 내부 타원 스케일
+    function ellipsePointScaled(t, k){
+      const p = ellipsePoint(t);
+      return {
+        x: botCenter.x + (p.x - botCenter.x) * k,
+        y: botCenter.y + (p.y - botCenter.y) * k
+      };
+    }
+    const stepsArc = Math.max(24, Math.floor(120 * (dParam/(Math.PI*2))));
+    ctx2d.save();
+    ctx2d.strokeStyle = '#d75757';
+    ctx2d.lineWidth = 2.5;
+    ctx2d.beginPath();
+    for(let i=0;i<=stepsArc;i++){
+      const tt = t0 + dParam * (i/stepsArc);
+      const q = ellipsePointScaled(tt, kArc);
+      if(i===0) ctx2d.moveTo(q.x, q.y); else ctx2d.lineTo(q.x, q.y);
+    }
+    ctx2d.stroke();
+
+    // 라벨 위치: 내부 호 중간점 근처, 바깥쪽으로 약간 오프셋
+    const tMid = t0 + dParam*0.5;
+    const pm = ellipsePointScaled(tMid, kArc);
+    const vx = pm.x - botCenter.x;
+    const vy = pm.y - botCenter.y;
+    const vlen = Math.hypot(vx, vy) || 1;
+    const lx2 = pm.x + (14 * vx / vlen);
+    const ly2 = pm.y + (14 * vy / vlen);
+    const label2 = 'θ2';
+    ctx2d.fillStyle = '#d75757';
+    ctx2d.font = '600 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", Arial';
+    ctx2d.textAlign = 'center';
+    ctx2d.textBaseline = 'middle';
+    ctx2d.strokeStyle = 'rgba(255,255,255,0.92)';
+    ctx2d.lineWidth = 3;
+    ctx2d.strokeText(label2, lx2, ly2);
+    ctx2d.fillText(label2, lx2, ly2);
+    ctx2d.restore();
+
     ctx2d.save();
     ctx2d.setLineDash([5,6]);
     ctx2d.strokeStyle = 'rgba(200,220,255,0.65)';
